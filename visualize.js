@@ -75,24 +75,24 @@ function makeGraph(totals, targets, ignore) {
                 rate = ing.amount
             } else {
                 rate = totals.rates.get(recipe).mul(ing.amount)
-            }
-            for (let subRecipe of ing.item.recipes) {
-                if (totals.rates.has(subRecipe)) {
-                    let link = {
-                        "source": nodeMap.get(subRecipe.name),
-                        "target": node,
-                        "value": rate.toFloat(),
-                        "rate": rate,
+                for (let subRecipe of ing.item.recipes) {
+                    if (totals.rates.has(subRecipe)) {
+                        let link = {
+                            "source": nodeMap.get(subRecipe.name),
+                            "target": node,
+                            "value": rate.toFloat(),
+                            "rate": rate,
+                        }
+                        let belts = []
+                        let beltCountExact = spec.getBeltCount(rate)
+                        let beltCount = beltCountExact.toFloat()
+                        for (let j = one; j.less(beltCountExact); j = j.add(one)) {
+                            let i = j.toFloat()
+                            belts.push({link, i, beltCount})
+                        }
+                        link.belts = belts
+                        links.push(link)
                     }
-                    let belts = []
-                    let beltCountExact = spec.getBeltCount(rate)
-                    let beltCount = beltCountExact.toFloat()
-                    for (let j = one; j.less(beltCountExact); j = j.add(one)) {
-                        let i = j.toFloat()
-                        belts.push({link, i, beltCount})
-                    }
-                    link.belts = belts
-                    links.push(link)
                 }
             }
         }
@@ -107,11 +107,18 @@ function recipeValue(recipe, rate, ignore) {
             inputValue = inputValue.add(rate.mul(ing.amount))
         }
     }
-    let outputValue = rate.mul(recipe.product.amount)
-    if (inputValue.less(outputValue)) {
-        return outputValue
-    } else {
-        return inputValue
+    // ! Warning products is an array of ingredients and does not possess an amount attribute on its own
+    // TODO: Implement handling for multiple products
+    if (recipe.category != null) {
+        let outputValue = rate.mul(recipe.products[0].amount);
+        if (inputValue.less(outputValue)) {
+            return outputValue
+        } else {
+            return inputValue
+        }
+    }
+    else {
+        return inputValue;
     }
 }
 
@@ -126,7 +133,7 @@ function rankHeightEstimate(rank, valueFactor) {
 function nodeText(d) {
     if (d.count.isZero()) {
         if (d.rate === null) {
-            return ""
+            return "output"
         } else {
             return `\u00d7 ${spec.format.rate(d.rate)}/${spec.format.rateName}`
         }
@@ -162,10 +169,13 @@ let color = d3.scaleOrdinal(d3.schemeCategory10)
 export function renderTotals(totals, targets, ignore) {
     let data = makeGraph(totals, targets, ignore)
 
+    // ? Should maxRank be an instance of Rational?
     let maxRank = 0
     let ranks = new Map()
     let largestValue = zero
-    for (let [recipe, rank] of totals.heights) {
+    for (let [recipe, rank] of totals.rates) {
+        // TODO: rank.toDecimal seems to work but does it need to remain as a Rational?
+        rank = rank.toDecimal();
         let rankList = ranks.get(rank)
         if (rankList === undefined) {
             rankList = []
@@ -237,19 +247,27 @@ export function renderTotals(totals, targets, ignore) {
             .classed("node", true)
 
     rects.append("rect")
-        .attr("x", d => d.x0)
+        .attr("x", d => {
+            // ? Why do all nodes seem to show x0 and y0 == 0?
+            return  d.x0
+        })
         .attr("y", d => d.y0)
         .attr("height", d => d.y1 - d.y0)
         .attr("width", d => d.x1 - d.x0)
         .attr("fill", d => d3.color(color(d.name)).darker())
-    rects.filter(d => d.name != "output")
+
+    rects.filter(d => {
+        return d.name != "output"})
         .append("image")
-            .classed("ignore", d => ignore.has(d.recipe))
+        .classed("ignore", d => {
+                return ignore.has(d.recipe)
+            })
             .attr("x", d => d.x0 + 2)
             .attr("y", d => d.y0 + (d.y1 - d.y0) / 2 - (iconSize / 2))
             .attr("height", iconSize)
             .attr("width", iconSize)
-            .attr("xlink:href", d => d.recipe.iconPath())
+            .attr("xlink:href", d => d.recipe.icon.path())
+    
     rects.append("text")
         .attr("x", d => d.x0 + iconSize + 2)
         .attr("y", d => (d.y0 + d.y1) / 2)

@@ -24,6 +24,7 @@ class OutputRecipe {
     constructor(outputs) {
         this.name = "output"
         this.ingredients =  []
+        this.category = null
         for (let [item, rate] of outputs) {
             this.ingredients.push(new Ingredient(item, rate))
         }

@@ -458,7 +458,7 @@ class FactorySpecification {
     updateSolution() {
         let totals = this.solve()
         displayItems(this, totals)
-        //renderTotals(totals, this.buildTargets, this.ignore)
+        renderTotals(totals, this.buildTargets, this.ignore)
         this.setHash()
 
         renderDebug()
