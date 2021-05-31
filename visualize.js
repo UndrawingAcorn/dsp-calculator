@@ -49,6 +49,9 @@ function makeGraph(totals, targets, ignore) {
     nodeMap.set("output", nodes[0])
 
     for (let [recipe, rate] of totals.rates) {
+        if (recipe.name === "output") {
+            continue
+        }
         let building = spec.getBuilding(recipe)
         let count = spec.getCount(recipe, rate)
         let node = {
@@ -75,24 +78,24 @@ function makeGraph(totals, targets, ignore) {
                 rate = ing.amount
             } else {
                 rate = totals.rates.get(recipe).mul(ing.amount)
-                for (let subRecipe of ing.item.recipes) {
-                    if (totals.rates.has(subRecipe)) {
-                        let link = {
-                            "source": nodeMap.get(subRecipe.name),
-                            "target": node,
-                            "value": rate.toFloat(),
-                            "rate": rate,
-                        }
-                        let belts = []
-                        let beltCountExact = spec.getBeltCount(rate)
-                        let beltCount = beltCountExact.toFloat()
-                        for (let j = one; j.less(beltCountExact); j = j.add(one)) {
-                            let i = j.toFloat()
-                            belts.push({link, i, beltCount})
-                        }
-                        link.belts = belts
-                        links.push(link)
-                    }
+			}
+			for (let subRecipe of ing.item.recipes) {
+				if (totals.rates.has(subRecipe)) {
+					let link = {
+						"source": nodeMap.get(subRecipe.name),
+						"target": node,
+						"value": rate.toFloat(),
+						"rate": rate,
+					}
+					let belts = []
+					let beltCountExact = spec.getBeltCount(rate)
+					let beltCount = beltCountExact.toFloat()
+					for (let j = one; j.less(beltCountExact); j = j.add(one)) {
+						let i = j.toFloat()
+						belts.push({link, i, beltCount})
+					}
+					link.belts = belts
+					links.push(link)
                 }
             }
         }
@@ -131,15 +134,19 @@ function rankHeightEstimate(rank, valueFactor) {
 }
 
 function nodeText(d) {
-    if (d.count.isZero()) {
-        if (d.rate === null) {
-            return "output"
-        } else {
-            return `\u00d7 ${spec.format.rate(d.rate)}/${spec.format.rateName}`
-        }
-    } else {
-        return "\u00d7 " + spec.format.count(d.count)
-    }
+	if(d.name === "output" | d.name === "surplus") {
+		return d.name
+	} else {
+		if (d.count.isZero()) {
+		    if (d.rate === null) {
+		        return `\u00d7 ${spec.buildTargets[0].rateInput.value}/${spec.format.rateName}`
+		    } else {
+		        return `\u00d7 ${spec.format.rate(d.rate)}/${spec.format.rateName}`
+		    }
+		} else {
+		    return "\u00d7 " + spec.format.count(d.count)
+		}
+	}
 }
 
 // This is basically an educated guess, but seems to match whatever Chrome and
@@ -174,7 +181,6 @@ export function renderTotals(totals, targets, ignore) {
     let ranks = new Map()
     let largestValue = zero
     for (let [recipe, rank] of totals.rates) {
-        // TODO: rank.toDecimal seems to work but does it need to remain as a Rational?
         rank = rank.toDecimal();
         let rankList = ranks.get(rank)
         if (rankList === undefined) {
@@ -231,6 +237,8 @@ export function renderTotals(totals, targets, ignore) {
 
     svg.selectAll("g").remove()
 
+    // * Sankey() currently breaks for node arrays of length one i.e. resource nodes.
+    // TODO: Adjust logic for single node trees or remove single nodes as an option
     let sankey = d3.sankey()
         .nodeWidth(nodeWidth)
         .nodePadding(nodePadding)
@@ -247,17 +255,14 @@ export function renderTotals(totals, targets, ignore) {
             .classed("node", true)
 
     rects.append("rect")
-        .attr("x", d => {
-            // ? Why do all nodes seem to show x0 and y0 == 0?
-            return  d.x0
-        })
+        .attr("x", d => d.x0)
         .attr("y", d => d.y0)
         .attr("height", d => d.y1 - d.y0)
         .attr("width", d => d.x1 - d.x0)
         .attr("fill", d => d3.color(color(d.name)).darker())
-
+    
     rects.filter(d => {
-        return d.name != "output"})
+        return (d.name != "output" && d.name != "surplus" )})
         .append("image")
         .classed("ignore", d => {
                 return ignore.has(d.recipe)

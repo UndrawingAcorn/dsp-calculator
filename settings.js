@@ -136,6 +136,40 @@ function beltHandler(event, belt) {
     spec.updateSolution()
 }
 
+function assemblerHandler(event, assembler) {
+    spec.assembler = assembler
+    spec.updateSolution()
+}
+
+
+// assemblers
+function renderAssemblerSettings(settings) {
+    let defaultAssembler = spec.buildings.get("crafting")[0]
+    if (settings.has("assembler")) {
+        defaultAssembler = assembler
+    }
+    spec.assembler = defaultAssembler
+    let assemblers = []
+    for (let assembler of spec.buildings.get("crafting")) {
+        assemblers.push(assembler)
+    }
+    let form = d3.select("#assembler_selector")
+    form.selectAll("*").remove()
+    let assemblerOption = form.selectAll("span")
+        .data(assemblers)
+        .join("span")
+    assemblerOption.append("input")
+        .attr("id", d => "assembler." + d.key)
+        .attr("type", "radio")
+        .attr("name", "assembler")
+        .attr("value", d => d.key)
+        .attr("checked", d => d === spec.assembler ? "" : null)
+        .on("change", assemblerHandler)
+    assemblerOption.append("label")
+        .attr("for", d => "assembler." + d.key)
+        .append(d => d.icon.make(32))
+}
+
 function renderBelts(settings) {
     let beltKey = spec.belts.keys().next().value
     if (settings.has("belt")) {
@@ -365,7 +399,8 @@ export function renderSettings(settings) {
     renderRateOptions(settings)
     renderPrecisions(settings)
     renderBelts(settings)
+    renderAssemblerSettings(settings)
     renderRecipes(settings)
-    renderResourcePriorities(settings)
+    // renderResourcePriorities(settings)
     renderTab(settings)
 }

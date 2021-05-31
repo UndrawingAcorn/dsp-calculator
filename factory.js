@@ -87,6 +87,7 @@ class FactorySpecification {
 
         this.defaultItem = null
         this.buildTargets = []
+        this.assembler = null
 
         this.belt = null
 
@@ -373,6 +374,9 @@ class FactorySpecification {
         //} else if (this.minerSettings.has(recipe)) {
         //    return this.minerSettings.get(recipe).miner
         } else {
+            if(recipe.category === "crafting") {
+                return this.assembler
+            }
             // NOTE: Only miners offer alternative buildings. May need to
             // revisit this if higher tiers of constructors are added.
             return this.buildings.get(recipe.category)[0]

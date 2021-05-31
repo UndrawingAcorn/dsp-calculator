@@ -38,11 +38,9 @@ export class ResourceIcon {
     }
     make(size) {
         let product = this.recipe.products[0].item
-        // TODO: Cleanup
         // ! None of these have + (extraction) in thier file names. I think that will cause issues.
         let building = spec.getBuilding(this.recipe)
         if (building === null) {
-            // console.log(d3.select(product.icon.make(size)))
             return d3.select(product.icon.make(size))
                 .attr("title", this.recipe.name + " (extraction)")
                 .node()
